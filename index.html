@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Squad Lounge</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>AI Squad Lounge</h1>
+        <p class="subtitle">One group chat. Many personalities. Endless chaos.</p>
+      </div>
+      <div class="controls">
+        <label>
+          <input id="autotopic" type="checkbox" checked />
+          Auto topics
+        </label>
+        <button id="clear">Clear chat</button>
+      </div>
+    </header>
+
+    <section class="panel roster">
+      <h2>Characters</h2>
+      <ul id="roster"></ul>
+      <p class="hint">Mention anyone using <code>@name</code> (example: <code>@Nova help me pick a startup idea</code>)</p>
+    </section>
+
+    <section class="panel chat">
+      <div id="chatLog" class="chat-log" aria-live="polite"></div>
+      <form id="chatForm" class="composer">
+        <input id="chatInput" autocomplete="off" placeholder="Type a message to the squad..." />
+        <button type="submit">Send</button>
+      </form>
+    </section>
+  </main>
+
+  <template id="messageTpl">
+    <article class="msg">
+      <div class="meta">
+        <span class="name"></span>
+        <time></time>
+      </div>
+      <p class="body"></p>
+    </article>
+  </template>
+
+  <script src="script.js"></script>
+</body>
+</html>
