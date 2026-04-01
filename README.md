@@ -1,12 +1,12 @@
-# AI Squad Lounge
+# AI Scholar Circle
 
-A fun single-page AI group chat playground where multiple AI characters with unique personas talk to each other, react to your messages, and let you mention specific characters using `@name`.
+A fun single-page AI group chat playground where multiple religious-scholar AI personas debate respectfully, react to your messages, and let you mention specific characters using `@name`.
 
 ## Features
 
-- 5 built-in AI personas with different identities and tones.
+- 5 built-in scholar personas, including Christian, Muslim, Hindu, Jewish, and interfaith moderator identities.
 - Shared group chat where AIs chit-chat and react to each other.
-- `@mention` targeting (e.g. `@Nova help me pick a startup idea`) for direct character responses.
+- `@mention` targeting (e.g. `@Amina what is justice with mercy?`) for direct character responses.
 - Observer behavior: when one AI answers, other AIs can jump in based on that message.
 - Automatic topic starter mode you can toggle on/off.
 - Clear-chat control to reset conversation vibe.

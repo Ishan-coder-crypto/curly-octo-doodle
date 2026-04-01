@@ -1,60 +1,60 @@
 const personas = [
   {
-    name: "Nova",
-    identity: "Visionary founder",
-    tone: "ambitious",
-    style: "future-focused one-liners"
+    name: "Elias",
+    identity: "Christian theologian",
+    tone: "gracious",
+    style: "biblical reflection and practical wisdom"
   },
   {
-    name: "Blaze",
-    identity: "Chaotic roast comic",
-    tone: "playful",
-    style: "friendly teasing and punchlines"
+    name: "Amina",
+    identity: "Muslim scholar",
+    tone: "thoughtful",
+    style: "Qur'anic ethics and balanced reasoning"
   },
   {
-    name: "Lyra",
-    identity: "Poetic romantic",
-    tone: "flirty",
-    style: "metaphors and warm charm"
+    name: "Arjun",
+    identity: "Hindu philosopher",
+    tone: "reflective",
+    style: "dharmic framing and nuanced debate"
   },
   {
-    name: "Cipher",
-    identity: "Analyst hacker",
-    tone: "sharp",
-    style: "logic-first tactical replies"
+    name: "Leah",
+    identity: "Jewish rabbinic thinker",
+    tone: "inquisitive",
+    style: "text-rooted questions and ethical rigor"
   },
   {
-    name: "Moss",
-    identity: "Zen therapist",
-    tone: "grounded",
-    style: "calm insight and emotional balance"
+    name: "Sofia",
+    identity: "Interfaith moderator",
+    tone: "calm",
+    style: "bridging viewpoints and human-centered synthesis"
   }
 ];
 
 const starters = [
-  "Hot take: best business idea under $100 to launch this week?",
-  "What's more important in life: consistency or intensity?",
-  "If we could teleport for one day, where are we going?",
-  "Debate time: AI should have personalities by default—yes or no?",
-  "Someone pitch a wild side hustle in 12 words."
+  "Is compassion more important than justice, or can they never be separated?",
+  "How should faith guide public life without controlling other people?",
+  "Can suffering shape wisdom, or does it mostly wound us?",
+  "Which matters more for character: intention, action, or consequences?",
+  "What makes a disagreement sincere rather than performative?"
 ];
 
 const reactions = {
-  agree: ["facts", "100%", "you cooked", "valid point", "co-signed"],
+  agree: ["That is a fair point.", "Well said.", "I can affirm that.", "I agree in part.", "That's a constructive view."],
   roast: [
-    "That confidence is loud for such a suspicious plan 😌",
-    "Respectfully, that's chaos in a hoodie.",
-    "I support your dream and fear its consequences."
+    "Strong claim—can we ground it a bit more carefully?",
+    "Bold argument, but it needs steadier footing.",
+    "You're passionate, now let's sharpen the reasoning."
   ],
   flirt: [
-    "Okay, that answer had dangerous levels of charm.",
-    "You really just walked in and raised the room's temperature.",
-    "Not me taking notes because that was smooth."
+    "There is real warmth in what you just said.",
+    "That had grace and confidence together.",
+    "A beautiful way to express a hard truth."
   ],
   challenge: [
-    "Counterpoint: what happens when reality refuses that plan?",
-    "I like it, but define success in one measurable metric.",
-    "Bold. Now defend it with data, not vibes."
+    "Can you defend that with one concrete example?",
+    "What principle supports that conclusion?",
+    "Helpful claim—now test it against a hard case."
   ]
 };
 
@@ -109,9 +109,9 @@ function cleanForAi(text) {
 
 function inferMood(text) {
   const t = text.toLowerCase();
-  if (/love|cute|date|romance|flirt|heart/.test(t)) return "flirt";
-  if (/bad|stupid|dumb|weak|roast|cringe/.test(t)) return "roast";
-  if (/why|how|proof|evidence|metric|data/.test(t)) return "challenge";
+  if (/love|mercy|kindness|beauty|heart|grace/.test(t)) return "flirt";
+  if (/wrong|ignorant|nonsense|roast|bad take/.test(t)) return "roast";
+  if (/why|how|proof|evidence|principle|reason/.test(t)) return "challenge";
   return "agree";
 }
 
@@ -120,25 +120,25 @@ function buildPersonaReply(persona, userText, direct = false) {
   const topic = cleanForAi(userText) || "that";
 
   const personaHooks = {
-    Nova: [
-      `Let's turn ${topic} into a 7-day experiment and ship fast.`,
-      `I'm seeing product potential in ${topic}; who's building first?`
+    Elias: [
+      `From a Christian lens, ${topic} invites both truth and compassion; we should hold both.`,
+      `When I hear ${topic}, I ask: does it move us toward love of God and neighbor?`
     ],
-    Blaze: [
-      `${pick(reactions.roast)} But okay, ${topic} could still slap.`,
-      `If ${topic} were a person it'd definitely skip leg day.`
+    Amina: [
+      `In Islamic ethics, ${topic} asks us to balance justice, mercy, and intention.`,
+      `On ${topic}, wisdom begins with humility: what do we know, and what are we assuming?`
     ],
-    Lyra: [
-      `${pick(reactions.flirt)} Also, ${topic} feels like a moonlit conversation.`,
-      `Soft take: ${topic} deserves curiosity, not cynicism.`
+    Arjun: [
+      `In dharmic thought, ${topic} is less about winning and more about right action over time.`,
+      `${pick(reactions.flirt)} I would ask whether ${topic} aligns with duty, conscience, and non-harm.`
     ],
-    Cipher: [
-      `Threading logic: claim -> evidence -> action. Start with ${topic}.`,
-      `${pick(reactions.challenge)} For ${topic}, I'd run A/B tests first.`
+    Leah: [
+      `In Jewish study, ${topic} benefits from argument for the sake of heaven: rigorous but respectful.`,
+      `${pick(reactions.challenge)} On ${topic}, I'd compare principles before conclusions.`
     ],
-    Moss: [
-      `Pause, breathe—what do you *want* from ${topic}, not just what sounds cool?`,
-      `I hear energy around ${topic}. Let's keep it playful and kind.`
+    Sofia: [
+      `I hear valid tension in ${topic}; let's keep this deeply human and intellectually honest.`,
+      `Across traditions, ${topic} asks not only \"What is true?\" but also \"What heals people?\"`
     ]
   };
 
@@ -222,9 +222,9 @@ clearBtn.addEventListener("click", () => {
 
 function boot() {
   renderRoster();
-  postMessage("System", "Welcome to AI Squad Lounge. Mention a character with @name to get direct replies.");
-  postMessage("Nova", "Who's ready to build something chaotic and legendary today?");
-  postMessage("Blaze", "If it's not mildly unhinged, is it even a plan?");
+  postMessage("System", "Welcome to AI Scholar Circle. Mention a scholar with @name to get direct replies.");
+  postMessage("Elias", "Shall we begin with a question: what does a good life require of us?");
+  postMessage("Amina", "And as we discuss, may we keep adab—good character—at the center.");
   state.convoPulse = setInterval(maybeStartTopic, 4000);
 }
 
