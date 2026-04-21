@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minimalist 3D Gallery</title>
+  <style>
+    :root {
+      --bg-1: #07090f;
+      --bg-2: #111726;
+      --bg-3: #1a1e33;
+      --glass: rgba(255, 255, 255, 0.09);
+      --glass-strong: rgba(255, 255, 255, 0.16);
+      --text: #f5f8ff;
+      --muted: #b8c1d9;
+      --accent: #8cb3ff;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+      color: var(--text);
+      background: transparent;
+    }
+
+    body {
+      position: relative;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(1200px 700px at 20% 15%, #2b2f4f66 0%, transparent 60%),
+        radial-gradient(1000px 680px at 85% 20%, #1e446655 0%, transparent 60%),
+        linear-gradient(140deg, var(--bg-1), var(--bg-2) 45%, var(--bg-3));
+    }
+
+    .fog {
+      position: absolute;
+      inset: -15vmax;
+      pointer-events: none;
+      background: radial-gradient(circle at center, rgba(255, 255, 255, 0.08), transparent 55%);
+      filter: blur(80px);
+      animation: pulse 8s ease-in-out infinite;
+      z-index: 0;
+    }
+
+    .scene {
+      position: relative;
+      width: min(80vmin, 760px);
+      height: min(80vmin, 760px);
+      perspective: 1200px;
+      z-index: 2;
+    }
+
+    .gallery {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      cursor: grab;
+    }
+
+    .gallery:active {
+      cursor: grabbing;
+    }
+
+    .painting {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: clamp(140px, 20vmin, 220px);
+      height: clamp(180px, 28vmin, 280px);
+      margin: calc(clamp(180px, 28vmin, 280px) * -0.5) calc(clamp(140px, 20vmin, 220px) * -0.5);
+      border-radius: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      background: var(--glass);
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(14px);
+      overflow: hidden;
+      transition: transform 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    .painting:hover {
+      transform: scale(1.06) translateZ(2px);
+      box-shadow: 0 18px 40px rgba(30, 54, 116, 0.4);
+    }
+
+    .painting img {
+      width: 100%;
+      height: 74%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .painting h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      padding: 0.75rem 0.9rem;
+      color: #f0f5ff;
+    }
+
+    .loading {
+      position: absolute;
+      top: 6%;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 0.6rem 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(10px);
+      font-size: 0.95rem;
+      letter-spacing: 0.06em;
+      color: #e5ebff;
+      z-index: 3;
+      animation: glow 2.6s infinite;
+    }
+
+    .hint {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(88vw, 640px);
+      text-align: center;
+      padding: 0.75rem 1rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(9, 12, 19, 0.28);
+      color: var(--muted);
+      font-size: clamp(0.78rem, 1.8vmin, 0.95rem);
+      backdrop-filter: blur(9px);
+      z-index: 4;
+    }
+
+    .auto-btn {
+      position: absolute;
+      right: 22px;
+      bottom: 22px;
+      z-index: 5;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 999px;
+      padding: 0.7rem 1rem;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      font-size: 0.92rem;
+      cursor: pointer;
+      transition: background 0.25s ease, transform 0.25s ease;
+    }
+
+    .auto-btn:hover {
+      transform: translateY(-1px);
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .auto-btn[data-on="true"] {
+      border-color: rgba(140, 179, 255, 0.65);
+      color: #dce7ff;
+      box-shadow: 0 0 0 2px rgba(140, 179, 255, 0.2) inset;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      place-items: center;
+      background: rgba(5, 8, 15, 0.44);
+      backdrop-filter: blur(12px);
+      z-index: 6;
+    }
+
+    .overlay.show {
+      display: grid;
+    }
+
+    .detail-card {
+      width: min(90vw, 760px);
+      background: rgba(18, 24, 37, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      backdrop-filter: blur(18px);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: minmax(220px, 1.1fr) 1fr;
+    }
+
+    .detail-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .detail-content {
+      padding: 1.25rem 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.9rem;
+    }
+
+    .detail-content h2 {
+      font-size: 1.25rem;
+      letter-spacing: 0.03em;
+    }
+
+    .detail-content p {
+      color: #d2dbf2;
+      line-height: 1.5;
+      font-size: 0.95rem;
+    }
+
+    .close-btn {
+      margin-top: auto;
+      align-self: flex-start;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 999px;
+      padding: 0.5rem 0.9rem;
+      background: rgba(255, 255, 255, 0.08);
+      color: #f7f9ff;
+      cursor: pointer;
+    }
+
+    @media (max-width: 700px) {
+      .detail-card {
+        grid-template-columns: 1fr;
+      }
+
+      .detail-card img {
+        max-height: 240px;
+      }
+    }
+
+    @keyframes glow {
+      0%, 100% { opacity: 0.7; }
+      50% { opacity: 1; }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.35; }
+      50% { transform: scale(1.08); opacity: 0.6; }
+    }
+  </style>
+</head>
+<body>
+  <div class="fog"></div>
+  <div class="loading">Loading gallery...</div>
+
+  <main class="scene">
+    <section class="gallery" id="gallery" aria-label="3D Gallery"></section>
+  </main>
+
+  <p class="hint">Drag to rotate the gallery and click a painting to enlarge and view details.</p>
+  <button class="auto-btn" id="autoRotateBtn" data-on="true">Auto-rotate</button>
+
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Painting details">
+    <article class="detail-card">
+      <img id="detailImage" alt="Selected painting" />
+      <section class="detail-content">
+        <h2 id="detailTitle"></h2>
+        <p id="detailDescription"></p>
+        <button class="close-btn" id="closeDetail">Close</button>
+      </section>
+    </article>
+  </div>
+
+  <script>
+    const paintings = [
+      {
+        title: "Neon Horizon",
+        description: "A tranquil skyline dissolving into layers of electric dusk, balancing calm geometry and vivid light.",
+        image: "https://images.unsplash.com/photo-1511795409834-432f4a80ba17?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        title: "Silent Current",
+        description: "Fluid strokes and minimalist textures evoke a low-frequency rhythm moving beneath still water.",
+        image: "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        title: "Glass Flora",
+        description: "A study in transparency where organic forms bloom through refracted shadows and muted metallic tones.",
+        image: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        title: "Nocturne Axis",
+        description: "Intersecting planes drift in a dark gradient field, creating a dynamic center of visual gravity.",
+        image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        title: "Lucid Structure",
+        description: "A minimalist arrangement of light and architecture, exploring depth through layered translucency.",
+        image: "https://images.unsplash.com/photo-1477414348463-c0eb7f1359b6?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        title: "Aurora Thread",
+        description: "Delicate chromatic bands weave through darkness, producing a calm yet lively spatial sensation.",
+        image: "https://images.unsplash.com/photo-1508261305437-4d6f21f4f5fa?auto=format&fit=crop&w=900&q=80"
+      }
+    ];
+
+    const gallery = document.getElementById("gallery");
+    const overlay = document.getElementById("overlay");
+    const autoRotateBtn = document.getElementById("autoRotateBtn");
+    const detailImage = document.getElementById("detailImage");
+    const detailTitle = document.getElementById("detailTitle");
+    const detailDescription = document.getElementById("detailDescription");
+
+    const radius = 310;
+    let rotationY = 0;
+    let rotationX = -8;
+    let isDragging = false;
+    let autoRotate = true;
+    let startX = 0;
+    let startY = 0;
+
+    function createGallery() {
+      paintings.forEach((item, index) => {
+        const panel = document.createElement("article");
+        panel.className = "painting";
+
+        const angle = (360 / paintings.length) * index;
+        panel.style.transform = `rotateY(${angle}deg) translateZ(${radius}px)`;
+        panel.dataset.angle = angle;
+        panel.dataset.index = index;
+
+        panel.innerHTML = `
+          <img src="${item.image}" alt="${item.title}">
+          <h3>${item.title}</h3>
+        `;
+
+        panel.addEventListener("click", (event) => {
+          event.stopPropagation();
+          openDetail(index);
+        });
+
+        gallery.appendChild(panel);
+      });
+
+      updateRotation();
+    }
+
+    function updateRotation() {
+      gallery.style.transform = `rotateX(${rotationX}deg) rotateY(${rotationY}deg)`;
+    }
+
+    function animate() {
+      if (autoRotate && !isDragging && !overlay.classList.contains("show")) {
+        rotationY += 0.24;
+        updateRotation();
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function openDetail(index) {
+      const item = paintings[index];
+      detailImage.src = item.image;
+      detailImage.alt = item.title;
+      detailTitle.textContent = item.title;
+      detailDescription.textContent = item.description;
+      overlay.classList.add("show");
+    }
+
+    function closeDetail() {
+      overlay.classList.remove("show");
+    }
+
+    gallery.addEventListener("pointerdown", (event) => {
+      isDragging = true;
+      startX = event.clientX;
+      startY = event.clientY;
+      gallery.setPointerCapture(event.pointerId);
+    });
+
+    gallery.addEventListener("pointermove", (event) => {
+      if (!isDragging) return;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      rotationY += dx * 0.35;
+      rotationX -= dy * 0.22;
+      rotationX = Math.max(-40, Math.min(40, rotationX));
+      startX = event.clientX;
+      startY = event.clientY;
+      updateRotation();
+    });
+
+    gallery.addEventListener("pointerup", () => {
+      isDragging = false;
+    });
+
+    gallery.addEventListener("pointercancel", () => {
+      isDragging = false;
+    });
+
+    document.getElementById("closeDetail").addEventListener("click", closeDetail);
+
+    overlay.addEventListener("click", (event) => {
+      if (event.target === overlay) closeDetail();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeDetail();
+    });
+
+    autoRotateBtn.addEventListener("click", () => {
+      autoRotate = !autoRotate;
+      autoRotateBtn.dataset.on = String(autoRotate);
+      autoRotateBtn.style.opacity = autoRotate ? "1" : "0.72";
+    });
+
+    createGallery();
+    animate();
+  </script>
+</body>
+</html>
