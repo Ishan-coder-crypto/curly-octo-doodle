@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Immersive Glass 3D Gallery</title>
+  <style>
+    :root {
+      --bg-0: #04050c;
+      --bg-1: #0b1020;
+      --bg-2: #172647;
+      --bg-3: #34184d;
+      --glass: rgba(222, 236, 255, 0.09);
+      --glass-strong: rgba(222, 236, 255, 0.2);
+      --text: #f7fbff;
+      --muted: #b8c5df;
+      --accent: #8ad6ff;
+      --shadow: rgba(3, 8, 20, 0.7);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      color: var(--text);
+      font-family: "Inter", "Segoe UI", Roboto, sans-serif;
+    }
+
+    body {
+      position: relative;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(1200px 650px at 15% 12%, #4b338f66, transparent 60%),
+        radial-gradient(1000px 700px at 92% 20%, #1987a766, transparent 55%),
+        radial-gradient(900px 700px at 50% 95%, #5f2e7a77, transparent 70%),
+        linear-gradient(155deg, var(--bg-0), var(--bg-1) 40%, var(--bg-2) 72%, var(--bg-3));
+    }
+
+    .fog,
+    .fog-2 {
+      position: absolute;
+      inset: -20vmax;
+      pointer-events: none;
+      filter: blur(95px);
+      z-index: 0;
+    }
+
+    .fog {
+      background: radial-gradient(circle at center, rgba(202, 234, 255, 0.17), transparent 58%);
+      animation: pulse 9s ease-in-out infinite;
+    }
+
+    .fog-2 {
+      background: radial-gradient(circle at 38% 55%, rgba(196, 142, 255, 0.2), transparent 60%);
+      animation: pulse 12s ease-in-out infinite reverse;
+    }
+
+    .loading {
+      position: absolute;
+      top: 5.5%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      padding: 0.65rem 1.1rem;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.07);
+      backdrop-filter: blur(12px);
+      letter-spacing: 0.08em;
+      font-size: 0.92rem;
+      animation: glow 2.7s ease-in-out infinite;
+    }
+
+    .scene {
+      position: relative;
+      width: min(84vmin, 850px);
+      height: min(84vmin, 850px);
+      perspective: 1300px;
+      z-index: 2;
+    }
+
+    .platform {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: min(70vmin, 620px);
+      height: min(70vmin, 620px);
+      transform: translate(-50%, -50%) rotateX(72deg);
+      transform-style: preserve-3d;
+      border-radius: 50%;
+      border: 2px solid rgba(142, 209, 255, 0.6);
+      box-shadow:
+        0 0 40px rgba(122, 189, 255, 0.6),
+        0 0 100px rgba(169, 94, 255, 0.35),
+        inset 0 0 40px rgba(255, 255, 255, 0.25);
+      background: radial-gradient(circle at center, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.03) 55%, transparent 80%);
+      pointer-events: none;
+    }
+
+    .platform::before,
+    .platform::after {
+      content: "";
+      position: absolute;
+      inset: 11%;
+      border-radius: 50%;
+      border: 1px dashed rgba(194, 224, 255, 0.5);
+      animation: spin 12s linear infinite;
+    }
+
+    .platform::after {
+      inset: 23%;
+      border-style: solid;
+      border-color: rgba(229, 206, 255, 0.4);
+      animation-duration: 18s;
+      animation-direction: reverse;
+    }
+
+    .crystal {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 22px;
+      height: 130px;
+      transform-origin: bottom center;
+      clip-path: polygon(50% 0, 100% 45%, 82% 100%, 18% 100%, 0 45%);
+      background: linear-gradient(180deg, rgba(210, 237, 255, 0.8), rgba(159, 112, 255, 0.35));
+      filter: drop-shadow(0 0 10px rgba(159, 112, 255, 0.5));
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .gallery {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      cursor: grab;
+    }
+
+    .gallery:active { cursor: grabbing; }
+
+    .painting {
+      --zoom: 1.05;
+      --offsetY: 0%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: clamp(160px, 21vmin, 230px);
+      height: clamp(210px, 30vmin, 300px);
+      margin: calc(clamp(210px, 30vmin, 300px) * -0.5) calc(clamp(160px, 21vmin, 230px) * -0.5);
+      border-radius: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
+      backdrop-filter: blur(18px);
+      overflow: visible;
+      box-shadow:
+        0 18px 34px rgba(18, 27, 52, 0.42),
+        inset 0 1px 1px rgba(255, 255, 255, 0.35),
+        inset 0 -10px 20px rgba(133, 185, 255, 0.12);
+      transition: transform 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    .painting::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 18px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      pointer-events: none;
+    }
+
+    .painting::after {
+      content: "";
+      position: absolute;
+      width: 72%;
+      height: 20px;
+      left: 14%;
+      bottom: -22px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.6);
+      filter: blur(10px);
+      pointer-events: none;
+      transform: translateZ(-1px);
+    }
+
+    .painting:hover {
+      transform: scale(1.06) translateZ(6px);
+      box-shadow:
+        0 26px 46px rgba(20, 36, 72, 0.56),
+        inset 0 1px 1px rgba(255, 255, 255, 0.45),
+        inset 0 -12px 22px rgba(148, 236, 255, 0.14);
+    }
+
+    .image-wrap {
+      position: absolute;
+      inset: 14px 14px 54px;
+      border-radius: 14px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .painting img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: scale(var(--zoom)) translateY(var(--offsetY));
+      transform-origin: center;
+      transition: transform 0.4s ease;
+    }
+
+    .painting h3 {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hint {
+      position: absolute;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      width: min(82vw, 700px);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 14px;
+      padding: 0.78rem 1rem;
+      text-align: center;
+      background: rgba(4, 8, 18, 0.34);
+      color: var(--muted);
+      backdrop-filter: blur(10px);
+      font-size: clamp(0.8rem, 1.75vmin, 0.97rem);
+    }
+
+    .auto-btn {
+      position: absolute;
+      right: 20px;
+      bottom: 20px;
+      z-index: 6;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      border-radius: 999px;
+      padding: 0.68rem 1rem;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+    }
+
+    .auto-btn[data-on="false"] { opacity: 0.72; }
+
+    .controls {
+      position: absolute;
+      top: 12%;
+      right: 20px;
+      width: min(310px, 88vw);
+      z-index: 7;
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(8, 13, 26, 0.52);
+      backdrop-filter: blur(18px);
+      padding: 0.9rem;
+      display: grid;
+      gap: 0.62rem;
+      font-size: 0.86rem;
+    }
+
+    .controls-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .close-controls {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+      font-size: 0.92rem;
+      line-height: 1;
+    }
+
+    .open-controls {
+      position: absolute;
+      top: 12%;
+      right: 20px;
+      z-index: 7;
+      display: none;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(6, 10, 20, 0.5);
+      color: #ecf4ff;
+      backdrop-filter: blur(14px);
+      padding: 0.58rem 0.95rem;
+      cursor: pointer;
+    }
+
+    body.controls-hidden .controls {
+      display: none;
+    }
+
+    body.controls-hidden .open-controls {
+      display: inline-flex;
+    }
+
+    .controls h4 { font-size: 0.95rem; color: #eaf4ff; margin-bottom: 0.2rem; }
+    .controls label { color: #d7e3ff; display: grid; gap: 0.3rem; }
+
+    .controls input,
+    .controls textarea,
+    .controls button,
+    .controls select {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.08);
+      color: #f4f8ff;
+      padding: 0.52rem 0.6rem;
+      font: inherit;
+    }
+
+    .controls textarea { min-height: 70px; resize: vertical; }
+
+    .controls .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.55rem;
+    }
+
+    .controls .muted { color: #aeb8d3; font-size: 0.78rem; }
+
+    .controls button { cursor: pointer; }
+    .controls .primary { background: rgba(109, 191, 255, 0.24); }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      place-items: center;
+      z-index: 8;
+      background: rgba(2, 7, 17, 0.55);
+      backdrop-filter: blur(12px);
+    }
+
+    .overlay.show { display: grid; }
+
+    .detail-card {
+      width: min(92vw, 780px);
+      border-radius: 22px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(15, 21, 39, 0.65);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+      display: grid;
+      grid-template-columns: minmax(260px, 1fr) 1fr;
+    }
+
+    .detail-card img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      min-height: 300px;
+    }
+
+    .detail-content {
+      padding: 1.2rem 1.15rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+
+    .detail-content h2 { font-size: 1.25rem; }
+    .detail-content p { color: #d4def5; line-height: 1.56; }
+
+    .close-btn {
+      margin-top: auto;
+      width: fit-content;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text);
+      padding: 0.48rem 0.88rem;
+      cursor: pointer;
+    }
+
+    @media (max-width: 820px) {
+      .controls {
+        left: 50%;
+        right: auto;
+        top: auto;
+        bottom: 84px;
+        transform: translateX(-50%);
+        width: min(92vw, 520px);
+      }
+
+      .hint { bottom: 18px; width: min(92vw, 620px); }
+
+      .detail-card {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @keyframes glow { 0%, 100% { opacity: 0.7; } 50% { opacity: 1; } }
+    @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.35; } 50% { transform: scale(1.08); opacity: 0.62; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="fog"></div>
+  <div class="fog-2"></div>
+  <div class="loading">Loading gallery...</div>
+
+  <main class="scene">
+    <div class="platform"></div>
+    <div class="crystal" style="transform: translate(-50%, -50%) rotateX(72deg) rotateZ(0deg) translateY(-300px);"></div>
+    <div class="crystal" style="transform: translate(-50%, -50%) rotateX(72deg) rotateZ(70deg) translateY(-300px);"></div>
+    <div class="crystal" style="transform: translate(-50%, -50%) rotateX(72deg) rotateZ(140deg) translateY(-300px);"></div>
+    <div class="crystal" style="transform: translate(-50%, -50%) rotateX(72deg) rotateZ(210deg) translateY(-300px);"></div>
+    <div class="crystal" style="transform: translate(-50%, -50%) rotateX(72deg) rotateZ(280deg) translateY(-300px);"></div>
+    <section class="gallery" id="gallery" aria-label="3D Glass Gallery"></section>
+  </main>
+
+  <aside class="controls">
+    <div class="controls-header">
+      <h4>Add your own glass card</h4>
+      <button class="close-controls" id="closeControlsBtn" aria-label="Close upload panel">❌</button>
+    </div>
+    <label>Upload image
+      <input id="imageUpload" type="file" accept="image/*" />
+    </label>
+    <label>Card title
+      <input id="titleInput" type="text" placeholder="Title for this artwork" />
+    </label>
+    <label>Custom description (optional)
+      <textarea id="descInput" placeholder="Write your own description or generate one below."></textarea>
+    </label>
+    <div class="row">
+      <label>Crop zoom
+        <input id="zoomInput" type="range" min="1" max="2.4" step="0.05" value="1.05" />
+      </label>
+      <label>Vertical crop
+        <input id="offsetInput" type="range" min="-30" max="30" step="1" value="0" />
+      </label>
+    </div>
+    <div class="row">
+      <button id="aiDescBtn">Generate AI Description</button>
+      <button class="primary" id="addCardBtn">Add Card</button>
+    </div>
+    <p class="muted">Tip: Choose crop zoom and vertical crop before adding. AI description is generated locally.</p>
+  </aside>
+  <button class="open-controls" id="openControlsBtn">Open Upload Panel</button>
+
+  <p class="hint">Drag to rotate the gallery and click a painting to enlarge and view details.</p>
+  <button class="auto-btn" id="autoRotateBtn" data-on="true">Auto-rotate</button>
+
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Painting details">
+    <article class="detail-card">
+      <img id="detailImage" alt="Selected painting" />
+      <section class="detail-content">
+        <h2 id="detailTitle"></h2>
+        <p id="detailDescription"></p>
+        <button class="close-btn" id="closeDetail">Close</button>
+      </section>
+    </article>
+  </div>
+
+  <script>
+    const initialPaintings = [
+      {
+        title: "Neon Horizon",
+        description: "A tranquil skyline dissolving into layers of electric dusk, balancing calm geometry and vivid light.",
+        image: "https://images.unsplash.com/photo-1511795409834-432f4a80ba17?auto=format&fit=crop&w=1000&q=80",
+        zoom: 1.07,
+        offsetY: 0
+      },
+      {
+        title: "Silent Current",
+        description: "Fluid strokes and minimalist textures evoke a low-frequency rhythm moving beneath still water.",
+        image: "https://images.unsplash.com/photo-1460661419201-fd4cecdf8a8b?auto=format&fit=crop&w=1000&q=80",
+        zoom: 1.1,
+        offsetY: 0
+      },
+      {
+        title: "Aurora Thread",
+        description: "Delicate chromatic bands weave through darkness, producing a calm yet lively spatial sensation.",
+        image: "https://images.unsplash.com/photo-1508261305437-4d6f21f4f5fa?auto=format&fit=crop&w=1000&q=80",
+        zoom: 1.08,
+        offsetY: -3
+      },
+      {
+        title: "Nocturne Axis",
+        description: "Intersecting planes drift in a dark gradient field, creating a dynamic center of visual gravity.",
+        image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1000&q=80",
+        zoom: 1.12,
+        offsetY: 2
+      },
+      {
+        title: "Glass Flora",
+        description: "A study in transparency where organic forms bloom through refracted shadows and muted metallic tones.",
+        image: "https://images.unsplash.com/photo-1513364776144-60967b0f800f?auto=format&fit=crop&w=1000&q=80",
+        zoom: 1.05,
+        offsetY: 0
+      },
+      {
+        title: "Lucid Structure",
+        description: "A minimalist arrangement of light and architecture, exploring depth through layered translucency.",
+        image: "https://images.unsplash.com/photo-1477414348463-c0eb7f1359b6?auto=format&fit=crop&w=1000&q=80",
+        zoom: 1.08,
+        offsetY: 1
+      }
+    ];
+
+    const state = {
+      paintings: [...initialPaintings],
+      rotationY: 0,
+      rotationX: -10,
+      autoRotate: true,
+      isDragging: false,
+      startX: 0,
+      startY: 0,
+      rotateVelocity: 0.24,
+      pendingUploadUrl: "",
+      pendingUploadMeta: null,
+      isPageVisible: true
+    };
+
+    const radius = 320;
+
+    const els = {
+      gallery: document.getElementById("gallery"),
+      overlay: document.getElementById("overlay"),
+      autoRotateBtn: document.getElementById("autoRotateBtn"),
+      detailImage: document.getElementById("detailImage"),
+      detailTitle: document.getElementById("detailTitle"),
+      detailDescription: document.getElementById("detailDescription"),
+      imageUpload: document.getElementById("imageUpload"),
+      titleInput: document.getElementById("titleInput"),
+      descInput: document.getElementById("descInput"),
+      zoomInput: document.getElementById("zoomInput"),
+      offsetInput: document.getElementById("offsetInput"),
+      aiDescBtn: document.getElementById("aiDescBtn"),
+      addCardBtn: document.getElementById("addCardBtn"),
+      closeDetail: document.getElementById("closeDetail"),
+      closeControlsBtn: document.getElementById("closeControlsBtn"),
+      openControlsBtn: document.getElementById("openControlsBtn")
+    };
+
+    const audio = {
+      ctx: null,
+      master: null,
+      ambientGain: null,
+      rotateGain: null,
+      rotateOsc: null,
+      hasStarted: false
+    };
+
+    function ensureAudio() {
+      if (audio.hasStarted) return;
+      audio.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      audio.master = audio.ctx.createGain();
+      audio.master.gain.value = 0.12;
+      audio.master.connect(audio.ctx.destination);
+
+      audio.ambientGain = audio.ctx.createGain();
+      audio.ambientGain.gain.value = 0.03;
+      audio.ambientGain.connect(audio.master);
+
+      const ambientOscA = audio.ctx.createOscillator();
+      const ambientOscB = audio.ctx.createOscillator();
+      ambientOscA.type = "sine";
+      ambientOscB.type = "triangle";
+      ambientOscA.frequency.value = 110;
+      ambientOscB.frequency.value = 165;
+
+      const lfo = audio.ctx.createOscillator();
+      const lfoGain = audio.ctx.createGain();
+      lfo.frequency.value = 0.08;
+      lfoGain.gain.value = 11;
+      lfo.connect(lfoGain);
+      lfoGain.connect(ambientOscB.frequency);
+
+      ambientOscA.connect(audio.ambientGain);
+      ambientOscB.connect(audio.ambientGain);
+      ambientOscA.start();
+      ambientOscB.start();
+      lfo.start();
+
+      audio.rotateGain = audio.ctx.createGain();
+      audio.rotateGain.gain.value = 0;
+      audio.rotateGain.connect(audio.master);
+      audio.rotateOsc = audio.ctx.createOscillator();
+      audio.rotateOsc.type = "sawtooth";
+      audio.rotateOsc.frequency.value = 95;
+      audio.rotateOsc.connect(audio.rotateGain);
+      audio.rotateOsc.start();
+
+      audio.hasStarted = true;
+    }
+
+    function playTapSfx() {
+      ensureAudio();
+      const now = audio.ctx.currentTime;
+      const osc = audio.ctx.createOscillator();
+      const gain = audio.ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(620, now);
+      osc.frequency.exponentialRampToValueAtTime(280, now + 0.18);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.16, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+      osc.connect(gain);
+      gain.connect(audio.master);
+      osc.start(now);
+      osc.stop(now + 0.24);
+    }
+
+    function updateRotateSfx(speed = 0) {
+      if (!audio.hasStarted) return;
+      const now = audio.ctx.currentTime;
+      const target = Math.min(0.09, Math.max(0, Math.abs(speed) * 0.02));
+      audio.rotateGain.gain.cancelScheduledValues(now);
+      audio.rotateGain.gain.linearRampToValueAtTime(target, now + 0.07);
+      audio.rotateOsc.frequency.linearRampToValueAtTime(90 + Math.abs(speed) * 28, now + 0.07);
+    }
+
+    function colorToMood(avgColor = { r: 130, g: 140, b: 180 }, brightness = 120) {
+      if (brightness < 90) return "nocturnal";
+      if (avgColor.b > avgColor.r && avgColor.b > avgColor.g) return "cosmic";
+      if (avgColor.r > avgColor.b && avgColor.r > avgColor.g) return "warm cinematic";
+      if (avgColor.g > avgColor.r && avgColor.g > avgColor.b) return "organic futuristic";
+      return "balanced atmospheric";
+    }
+
+    function generateAIDescription(meta = {}) {
+      const title = (meta.title || els.titleInput.value || "Untitled Fragment").trim();
+      const zoom = Number(els.zoomInput.value).toFixed(2);
+      const offset = Number(els.offsetInput.value);
+      const avgColor = meta.avgColor || state.pendingUploadMeta?.avgColor || { r: 130, g: 140, b: 180 };
+      const brightness = meta.brightness ?? state.pendingUploadMeta?.brightness ?? 120;
+      const orientation = meta.orientation || state.pendingUploadMeta?.orientation || "portrait";
+      const mood = [
+        "luminous", "ethereal", "kinetic", "calm", "futuristic", "dreamlike", "prismatic", "neo-surreal"
+      ];
+      const textures = [
+        "glass gradients", "soft neon reflections", "crystalline layers", "misty contrast",
+        "clean geometry", "holographic shadows", "spectral edges"
+      ];
+      const narratives = [
+        "It feels like a memory rendered by a machine dreaming in color.",
+        "The composition suggests motion paused at the perfect cinematic frame.",
+        "There is a subtle tension between silence and electric rhythm.",
+        "It reads as an artifact from a future museum of light."
+      ];
+      const lineA = mood[Math.floor(Math.random() * mood.length)];
+      const lineB = textures[Math.floor(Math.random() * textures.length)];
+      const lineC = narratives[Math.floor(Math.random() * narratives.length)];
+      const colorMood = colorToMood(avgColor, brightness);
+      return `${title} presents a ${lineA}, ${colorMood} atmosphere through ${lineB}. ${lineC} Framing uses a ${orientation} emphasis with crop zoom ${zoom} and vertical shift ${offset > 0 ? "+" : ""}${offset}, giving the glass card a sculpted focal depth.`;
+    }
+
+    function analyzeImage(imageUrl) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          const sampleSize = 48;
+          canvas.width = sampleSize;
+          canvas.height = sampleSize;
+          ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+          const data = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+          let r = 0;
+          let g = 0;
+          let b = 0;
+          let count = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            r += data[i];
+            g += data[i + 1];
+            b += data[i + 2];
+            count += 1;
+          }
+          const avgColor = {
+            r: Math.round(r / count),
+            g: Math.round(g / count),
+            b: Math.round(b / count)
+          };
+          const brightness = Math.round((avgColor.r + avgColor.g + avgColor.b) / 3);
+          resolve({
+            avgColor,
+            brightness,
+            orientation: img.width >= img.height ? "landscape" : "portrait"
+          });
+        };
+        img.src = imageUrl;
+      });
+    }
+
+    function buildCard(item, index, total) {
+      const angle = (360 / total) * index;
+      const panel = document.createElement("article");
+      panel.className = "painting";
+      panel.style.transform = `rotateY(${angle}deg) translateZ(${radius}px)`;
+      panel.dataset.index = String(index);
+      panel.style.setProperty("--zoom", String(item.zoom || 1.05));
+      panel.style.setProperty("--offsetY", `${item.offsetY || 0}%`);
+
+      panel.innerHTML = `
+        <div class="image-wrap">
+          <img src="${item.image}" alt="${item.title}" />
+        </div>
+        <h3>${item.title}</h3>
+      `;
+
+      panel.addEventListener("click", (event) => {
+        event.stopPropagation();
+        playTapSfx();
+        openDetail(index);
+      });
+
+      return panel;
+    }
+
+    function renderGallery() {
+      els.gallery.innerHTML = "";
+      const total = state.paintings.length;
+      state.paintings.forEach((item, index) => {
+        els.gallery.appendChild(buildCard(item, index, total));
+      });
+      updateRotation();
+    }
+
+    function updateRotation() {
+      els.gallery.style.transform = `rotateX(${state.rotationX}deg) rotateY(${state.rotationY}deg)`;
+    }
+
+    function animate() {
+      if (
+        state.isPageVisible &&
+        state.autoRotate &&
+        !state.isDragging &&
+        !els.overlay.classList.contains("show")
+      ) {
+        state.rotationY += state.rotateVelocity;
+        updateRotation();
+        updateRotateSfx(state.rotateVelocity);
+      } else {
+        updateRotateSfx(0);
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function openDetail(index) {
+      const item = state.paintings[index];
+      if (!item) return;
+      els.detailImage.src = item.image;
+      els.detailImage.alt = item.title;
+      els.detailTitle.textContent = item.title;
+      els.detailDescription.textContent = item.description;
+      els.overlay.classList.add("show");
+    }
+
+    function closeDetail() {
+      els.overlay.classList.remove("show");
+    }
+
+    function setupGalleryInteractions() {
+      els.gallery.addEventListener("pointerdown", (event) => {
+        ensureAudio();
+        state.isDragging = true;
+        state.startX = event.clientX;
+        state.startY = event.clientY;
+        els.gallery.setPointerCapture(event.pointerId);
+      });
+
+      els.gallery.addEventListener("pointermove", (event) => {
+        if (!state.isDragging) return;
+        const dx = event.clientX - state.startX;
+        const dy = event.clientY - state.startY;
+        state.rotationY += dx * 0.34;
+        state.rotationX -= dy * 0.2;
+        state.rotationX = Math.max(-45, Math.min(45, state.rotationX));
+        state.startX = event.clientX;
+        state.startY = event.clientY;
+        updateRotation();
+        updateRotateSfx(Math.abs(dx) * 0.08 + 0.2);
+      });
+
+      els.gallery.addEventListener("pointerup", () => {
+        state.isDragging = false;
+      });
+      els.gallery.addEventListener("pointercancel", () => {
+        state.isDragging = false;
+      });
+    }
+
+    function setupOverlayInteractions() {
+      els.closeDetail.addEventListener("click", closeDetail);
+      els.overlay.addEventListener("click", (event) => {
+        if (event.target === els.overlay) closeDetail();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") closeDetail();
+      });
+    }
+
+    function setupControls() {
+      els.autoRotateBtn.addEventListener("click", () => {
+        ensureAudio();
+        state.autoRotate = !state.autoRotate;
+        els.autoRotateBtn.dataset.on = String(state.autoRotate);
+      });
+
+      els.closeControlsBtn.addEventListener("click", () => {
+        document.body.classList.add("controls-hidden");
+      });
+
+      els.openControlsBtn.addEventListener("click", () => {
+        document.body.classList.remove("controls-hidden");
+      });
+
+      els.aiDescBtn.addEventListener("click", () => {
+        const suggestion = generateAIDescription({
+          title: els.titleInput.value.trim(),
+          ...(state.pendingUploadMeta || {})
+        });
+        els.descInput.value = suggestion;
+        playTapSfx();
+      });
+
+      els.imageUpload.addEventListener("change", async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        if (state.pendingUploadUrl) {
+          URL.revokeObjectURL(state.pendingUploadUrl);
+        }
+        state.pendingUploadUrl = URL.createObjectURL(file);
+        state.pendingUploadMeta = await analyzeImage(state.pendingUploadUrl);
+        if (!els.titleInput.value.trim()) {
+          els.titleInput.value = file.name.replace(/\.[^.]+$/, "");
+        }
+        if (!els.descInput.value.trim()) {
+          els.descInput.value = generateAIDescription({
+            title: els.titleInput.value.trim(),
+            ...(state.pendingUploadMeta || {})
+          });
+        }
+      });
+
+      els.addCardBtn.addEventListener("click", () => {
+        if (!state.pendingUploadUrl) {
+          alert("Please upload an image first.");
+          return;
+        }
+
+        const title = els.titleInput.value.trim() || `Custom Piece ${state.paintings.length + 1}`;
+        const description = els.descInput.value.trim() || generateAIDescription({
+          title,
+          ...(state.pendingUploadMeta || {})
+        });
+
+        state.paintings.push({
+          title,
+          description,
+          image: state.pendingUploadUrl,
+          zoom: Number(els.zoomInput.value),
+          offsetY: Number(els.offsetInput.value)
+        });
+
+        renderGallery();
+        playTapSfx();
+
+        els.titleInput.value = "";
+        els.descInput.value = "";
+        els.zoomInput.value = "1.05";
+        els.offsetInput.value = "0";
+        els.imageUpload.value = "";
+        state.pendingUploadUrl = "";
+        state.pendingUploadMeta = null;
+      });
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      state.isPageVisible = !document.hidden;
+      if (!state.isPageVisible) updateRotateSfx(0);
+    });
+
+    renderGallery();
+    setupGalleryInteractions();
+    setupOverlayInteractions();
+    setupControls();
+    animate();
+
+    window.addEventListener("pointerdown", ensureAudio, { once: true });
+  </script>
+</body>
+</html>
