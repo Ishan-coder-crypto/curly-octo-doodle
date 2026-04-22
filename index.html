@@ -281,6 +281,49 @@
       font-size: 0.86rem;
     }
 
+    .controls-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .close-controls {
+      width: 30px;
+      height: 30px;
+      display: grid;
+      place-items: center;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(255, 255, 255, 0.08);
+      cursor: pointer;
+      font-size: 0.92rem;
+      line-height: 1;
+    }
+
+    .open-controls {
+      position: absolute;
+      top: 12%;
+      right: 20px;
+      z-index: 7;
+      display: none;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(6, 10, 20, 0.5);
+      color: #ecf4ff;
+      backdrop-filter: blur(14px);
+      padding: 0.58rem 0.95rem;
+      cursor: pointer;
+    }
+
+    body.controls-hidden .controls {
+      display: none;
+    }
+
+    body.controls-hidden .open-controls {
+      display: inline-flex;
+    }
+
     .controls h4 { font-size: 0.95rem; color: #eaf4ff; margin-bottom: 0.2rem; }
     .controls label { color: #d7e3ff; display: grid; gap: 0.3rem; }
 
@@ -400,7 +443,10 @@
   </main>
 
   <aside class="controls">
-    <h4>Add your own glass card</h4>
+    <div class="controls-header">
+      <h4>Add your own glass card</h4>
+      <button class="close-controls" id="closeControlsBtn" aria-label="Close upload panel">❌</button>
+    </div>
     <label>Upload image
       <input id="imageUpload" type="file" accept="image/*" />
     </label>
@@ -424,6 +470,7 @@
     </div>
     <p class="muted">Tip: Choose crop zoom and vertical crop before adding. AI description is generated locally.</p>
   </aside>
+  <button class="open-controls" id="openControlsBtn">Open Upload Panel</button>
 
   <p class="hint">Drag to rotate the gallery and click a painting to enlarge and view details.</p>
   <button class="auto-btn" id="autoRotateBtn" data-on="true">Auto-rotate</button>
@@ -494,7 +541,9 @@
       startX: 0,
       startY: 0,
       rotateVelocity: 0.24,
-      pendingUploadUrl: ""
+      pendingUploadUrl: "",
+      pendingUploadMeta: null,
+      isPageVisible: true
     };
 
     const radius = 320;
@@ -513,7 +562,9 @@
       offsetInput: document.getElementById("offsetInput"),
       aiDescBtn: document.getElementById("aiDescBtn"),
       addCardBtn: document.getElementById("addCardBtn"),
-      closeDetail: document.getElementById("closeDetail")
+      closeDetail: document.getElementById("closeDetail"),
+      closeControlsBtn: document.getElementById("closeControlsBtn"),
+      openControlsBtn: document.getElementById("openControlsBtn")
     };
 
     const audio = {
@@ -594,15 +645,76 @@
       audio.rotateOsc.frequency.linearRampToValueAtTime(90 + Math.abs(speed) * 28, now + 0.07);
     }
 
+    function colorToMood(avgColor = { r: 130, g: 140, b: 180 }, brightness = 120) {
+      if (brightness < 90) return "nocturnal";
+      if (avgColor.b > avgColor.r && avgColor.b > avgColor.g) return "cosmic";
+      if (avgColor.r > avgColor.b && avgColor.r > avgColor.g) return "warm cinematic";
+      if (avgColor.g > avgColor.r && avgColor.g > avgColor.b) return "organic futuristic";
+      return "balanced atmospheric";
+    }
+
     function generateAIDescription(meta = {}) {
       const title = (meta.title || els.titleInput.value || "Untitled Fragment").trim();
       const zoom = Number(els.zoomInput.value).toFixed(2);
       const offset = Number(els.offsetInput.value);
-      const mood = ["luminous", "ethereal", "kinetic", "calm", "futuristic", "dreamlike"];
-      const texture = ["glass gradients", "soft neon reflections", "crystalline layers", "misty contrast", "clean geometry"];
+      const avgColor = meta.avgColor || state.pendingUploadMeta?.avgColor || { r: 130, g: 140, b: 180 };
+      const brightness = meta.brightness ?? state.pendingUploadMeta?.brightness ?? 120;
+      const orientation = meta.orientation || state.pendingUploadMeta?.orientation || "portrait";
+      const mood = [
+        "luminous", "ethereal", "kinetic", "calm", "futuristic", "dreamlike", "prismatic", "neo-surreal"
+      ];
+      const textures = [
+        "glass gradients", "soft neon reflections", "crystalline layers", "misty contrast",
+        "clean geometry", "holographic shadows", "spectral edges"
+      ];
+      const narratives = [
+        "It feels like a memory rendered by a machine dreaming in color.",
+        "The composition suggests motion paused at the perfect cinematic frame.",
+        "There is a subtle tension between silence and electric rhythm.",
+        "It reads as an artifact from a future museum of light."
+      ];
       const lineA = mood[Math.floor(Math.random() * mood.length)];
-      const lineB = texture[Math.floor(Math.random() * texture.length)];
-      return `${title} captures a ${lineA} tone through ${lineB}. Composition is tuned with crop zoom ${zoom} and vertical framing ${offset > 0 ? "+" : ""}${offset}, producing a gallery-ready balance of depth, focus, and atmosphere.`;
+      const lineB = textures[Math.floor(Math.random() * textures.length)];
+      const lineC = narratives[Math.floor(Math.random() * narratives.length)];
+      const colorMood = colorToMood(avgColor, brightness);
+      return `${title} presents a ${lineA}, ${colorMood} atmosphere through ${lineB}. ${lineC} Framing uses a ${orientation} emphasis with crop zoom ${zoom} and vertical shift ${offset > 0 ? "+" : ""}${offset}, giving the glass card a sculpted focal depth.`;
+    }
+
+    function analyzeImage(imageUrl) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          const sampleSize = 48;
+          canvas.width = sampleSize;
+          canvas.height = sampleSize;
+          ctx.drawImage(img, 0, 0, sampleSize, sampleSize);
+          const data = ctx.getImageData(0, 0, sampleSize, sampleSize).data;
+          let r = 0;
+          let g = 0;
+          let b = 0;
+          let count = 0;
+          for (let i = 0; i < data.length; i += 4) {
+            r += data[i];
+            g += data[i + 1];
+            b += data[i + 2];
+            count += 1;
+          }
+          const avgColor = {
+            r: Math.round(r / count),
+            g: Math.round(g / count),
+            b: Math.round(b / count)
+          };
+          const brightness = Math.round((avgColor.r + avgColor.g + avgColor.b) / 3);
+          resolve({
+            avgColor,
+            brightness,
+            orientation: img.width >= img.height ? "landscape" : "portrait"
+          });
+        };
+        img.src = imageUrl;
+      });
     }
 
     function buildCard(item, index, total) {
@@ -644,7 +756,12 @@
     }
 
     function animate() {
-      if (state.autoRotate && !state.isDragging && !els.overlay.classList.contains("show")) {
+      if (
+        state.isPageVisible &&
+        state.autoRotate &&
+        !state.isDragging &&
+        !els.overlay.classList.contains("show")
+      ) {
         state.rotationY += state.rotateVelocity;
         updateRotation();
         updateRotateSfx(state.rotateVelocity);
@@ -715,18 +832,39 @@
         els.autoRotateBtn.dataset.on = String(state.autoRotate);
       });
 
+      els.closeControlsBtn.addEventListener("click", () => {
+        document.body.classList.add("controls-hidden");
+      });
+
+      els.openControlsBtn.addEventListener("click", () => {
+        document.body.classList.remove("controls-hidden");
+      });
+
       els.aiDescBtn.addEventListener("click", () => {
-        const suggestion = generateAIDescription({ title: els.titleInput.value.trim() });
+        const suggestion = generateAIDescription({
+          title: els.titleInput.value.trim(),
+          ...(state.pendingUploadMeta || {})
+        });
         els.descInput.value = suggestion;
         playTapSfx();
       });
 
-      els.imageUpload.addEventListener("change", (event) => {
+      els.imageUpload.addEventListener("change", async (event) => {
         const file = event.target.files?.[0];
         if (!file) return;
+        if (state.pendingUploadUrl) {
+          URL.revokeObjectURL(state.pendingUploadUrl);
+        }
         state.pendingUploadUrl = URL.createObjectURL(file);
+        state.pendingUploadMeta = await analyzeImage(state.pendingUploadUrl);
         if (!els.titleInput.value.trim()) {
           els.titleInput.value = file.name.replace(/\.[^.]+$/, "");
+        }
+        if (!els.descInput.value.trim()) {
+          els.descInput.value = generateAIDescription({
+            title: els.titleInput.value.trim(),
+            ...(state.pendingUploadMeta || {})
+          });
         }
       });
 
@@ -737,7 +875,10 @@
         }
 
         const title = els.titleInput.value.trim() || `Custom Piece ${state.paintings.length + 1}`;
-        const description = els.descInput.value.trim() || generateAIDescription({ title });
+        const description = els.descInput.value.trim() || generateAIDescription({
+          title,
+          ...(state.pendingUploadMeta || {})
+        });
 
         state.paintings.push({
           title,
@@ -756,8 +897,14 @@
         els.offsetInput.value = "0";
         els.imageUpload.value = "";
         state.pendingUploadUrl = "";
+        state.pendingUploadMeta = null;
       });
     }
+
+    document.addEventListener("visibilitychange", () => {
+      state.isPageVisible = !document.hidden;
+      if (!state.isPageVisible) updateRotateSfx(0);
+    });
 
     renderGallery();
     setupGalleryInteractions();
